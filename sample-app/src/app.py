@@ -1,8 +1,16 @@
 from flask import Flask, jsonify
+import logging
 import os
 import time
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Application version from environment
 APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
@@ -20,7 +28,20 @@ def health():
     })
 
 
+@app.route('/')
+def index():
+    """Main endpoint"""
+    logger.info("Index endpoint called")
+    return jsonify({
+        'message': 'Self-Healing CI/CD Pipeline Demo',
+        'version': APP_VERSION,
+        'environment': ENVIRONMENT
+    })
+
+
 if __name__ == '__main__':
     app.start_time = time.time()
     port = int(os.getenv('PORT', 5000))
+    logger.info(f"Starting application on port {port}")
+    logger.info(f"Version: {APP_VERSION}, Environment: {ENVIRONMENT}")
     app.run(host='0.0.0.0', port=port, debug=(ENVIRONMENT == 'development'))
