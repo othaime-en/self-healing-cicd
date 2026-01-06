@@ -1,3 +1,4 @@
+# sample-app/k8s/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -8,6 +9,11 @@ metadata:
     version: "1.0.0"
 spec:
   replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: sample-app
@@ -31,3 +37,10 @@ spec:
               value: "production"
             - name: PORT
               value: "5000"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
