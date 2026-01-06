@@ -28,6 +28,15 @@ def health():
     })
 
 
+@app.route('/ready')
+def ready():
+    """Readiness check endpoint"""
+    startup_time = int(os.getenv('STARTUP_TIME', '0'))
+    if time.time() - app.start_time < startup_time:
+        return jsonify({'status': 'not ready'}), 503
+    return jsonify({'status': 'ready'})
+
+
 @app.route('/')
 def index():
     """Main endpoint"""
