@@ -1,8 +1,10 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from prometheus_flask_exporter import PrometheusMetrics
 import logging
 import os
 import time
+import random
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -20,6 +22,21 @@ metrics.info('app_info', 'Application info', version='1.0.0')
 # Application version from environment
 APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+FAILURE_RATE = float(os.getenv('FAILURE_RATE', '0.0'))
+
+
+def simulate_failure(func):
+    """Decorator to simulate random failures for testing"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if random.random() < FAILURE_RATE:
+            logger.error(f"Simulated failure in {func.__name__}")
+            return jsonify({
+                'error': 'Simulated failure',
+                'endpoint': func.__name__
+            }), 500
+        return func(*args, **kwargs)
+    return wrapper
 
 
 @app.route('/health')
@@ -43,13 +60,49 @@ def ready():
 
 
 @app.route('/')
+@simulate_failure
 def index():
     """Main endpoint"""
     logger.info("Index endpoint called")
     return jsonify({
         'message': 'Self-Healing CI/CD Pipeline Demo',
         'version': APP_VERSION,
-        'environment': ENVIRONMENT
+        'environment': ENVIRONMENT,
+        'features': [
+            'Automatic rollback on failure',
+            'Health monitoring',
+            'Canary deployments',
+            'Self-healing capabilities'
+        ]
+    })
+
+
+@app.route('/api/data')
+@simulate_failure
+def get_data():
+    """Sample data endpoint"""
+    data = {
+        'items': [
+            {'id': 1, 'name': 'Item 1', 'value': random.randint(1, 100)},
+            {'id': 2, 'name': 'Item 2', 'value': random.randint(1, 100)},
+            {'id': 3, 'name': 'Item 3', 'value': random.randint(1, 100)}
+        ],
+        'total': 3,
+        'version': APP_VERSION
+    }
+    return jsonify(data)
+
+
+@app.route('/api/stress')
+def stress_test():
+    """Endpoint to test resource usage"""
+    duration = int(request.args.get('duration', 1))
+    result = sum(i**2 for i in range(10000000))
+    time.sleep(duration)
+    return jsonify({
+        'status': 'completed',
+        'duration': duration,
+        'result': result
     })
 
 
