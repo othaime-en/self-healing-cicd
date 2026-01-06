@@ -22,7 +22,7 @@ metrics.info('app_info', 'Application info', version='1.0.0')
 # Application version from environment
 APP_VERSION = os.getenv('APP_VERSION', '1.0.0')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
-FAILURE_RATE = float(os.getenv('FAILURE_RATE', '0.0'))
+FAILURE_RATE = float(os.getenv('FAILURE_RATE', '0.0'))  # Simulate failures
 
 
 def simulate_failure(func):
@@ -104,6 +104,17 @@ def stress_test():
         'duration': duration,
         'result': result
     })
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Not found'}), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
 
 
 if __name__ == '__main__':
