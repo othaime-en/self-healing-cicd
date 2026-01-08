@@ -1,8 +1,9 @@
 import logging
 from typing import Dict, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 import redis
+import json
 from kubernetes import client, config
 
 
@@ -80,3 +81,25 @@ class SelfHealingOrchestrator:
         self.k8s_core = client.CoreV1Api()
         
         logger.info("Self-Healing Orchestrator initialized")
+    
+    def save_deployment_state(self, state: DeploymentState) -> None:
+        """Save deployment state to Redis"""
+        key = f"deployment:{state.deployment_id}"
+        self.redis_client.setex(
+            key,
+            86400,  # 24 hours TTL
+            json.dumps(asdict(state), default=str)
+        )
+        logger.info(f"Saved deployment state: {state.deployment_id}")
+    
+    def get_deployment_state(self, deployment_id: str) -> Optional[DeploymentState]:
+        """Retrieve deployment state from Redis"""
+        key = f"deployment:{deployment_id}"
+        data = self.redis_client.get(key)
+        if data:
+            state_dict = json.loads(data)
+            state_dict['status'] = DeploymentStatus(state_dict['status'])
+            if state_dict.get('failure_type'):
+                state_dict['failure_type'] = FailureType(state_dict['failure_type'])
+            return DeploymentState(**state_dict)
+        return None
