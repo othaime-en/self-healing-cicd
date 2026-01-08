@@ -1,10 +1,12 @@
 import logging
-from typing import Dict, Optional
+import time
+from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 import redis
 import json
 from kubernetes import client, config
+from kubernetes.client.rest import ApiException
 
 
 # Configure logging
@@ -103,3 +105,39 @@ class SelfHealingOrchestrator:
                 state_dict['failure_type'] = FailureType(state_dict['failure_type'])
             return DeploymentState(**state_dict)
         return None
+    
+    def check_deployment_health(
+        self,
+        namespace: str,
+        deployment_name: str,
+        timeout: int = 300
+    ) -> bool:
+        """
+        Check if deployment is healthy
+        Returns True if all pods are ready
+        """
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            try:
+                deployment = self.k8s_apps.read_namespaced_deployment(
+                    name=deployment_name,
+                    namespace=namespace
+                )
+                
+                replicas = deployment.spec.replicas
+                ready_replicas = deployment.status.ready_replicas or 0
+                
+                if ready_replicas == replicas:
+                    logger.info(f"Deployment {deployment_name} is healthy: {ready_replicas}/{replicas} ready")
+                    return True
+                
+                logger.info(f"Waiting for deployment {deployment_name}: {ready_replicas}/{replicas} ready")
+                time.sleep(10)
+                
+            except ApiException as e:
+                logger.error(f"Error checking deployment health: {e}")
+                return False
+        
+        logger.error(f"Deployment {deployment_name} health check timeout")
+        return False
