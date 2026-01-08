@@ -141,3 +141,35 @@ class SelfHealingOrchestrator:
         
         logger.error(f"Deployment {deployment_name} health check timeout")
         return False
+    
+    def get_previous_version(
+        self,
+        namespace: str,
+        deployment_name: str
+    ) -> Optional[str]:
+        """Get previous successful deployment version"""
+        try:
+            # Check ReplicaSets to find previous version
+            replicasets = self.k8s_apps.list_namespaced_replica_set(
+                namespace=namespace,
+                label_selector=f"app={deployment_name}"
+            )
+            
+            # Sort by creation timestamp
+            sorted_rs = sorted(
+                replicasets.items,
+                key=lambda x: x.metadata.creation_timestamp,
+                reverse=True
+            )
+            
+            # Return second most recent (previous version)
+            if len(sorted_rs) >= 2:
+                version = sorted_rs[1].metadata.labels.get('version')
+                logger.info(f"Found previous version: {version}")
+                return version
+            
+        except ApiException as e:
+            logger.error(f"Error getting previous version: {e}")
+        
+        return None
+    
